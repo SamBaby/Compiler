@@ -1,0 +1,264 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+//trasition table
+int scannertable[7][6]={
+{0,1,0,0,0,0},
+{0,1,2,4,0,0},
+{0,3,0,0,0,0},
+{0,3,0,4,0,0},
+{0,6,0,0,5,5},
+{0,6,0,0,0,0},
+{0,6,0,0,0,0}};
+
+struct sammy{char context[100];};
+struct sammy token[100];
+struct sammy parsingtable[6][8]={
+{"x","+","-","*","/","(",")","n"},
+{"e","x","x","x","x","tr","x","tr"},
+{"r","+tr","-tr","x","x","x","","x"},
+{"t","x","x","x","x","fy","x","fy"},
+{"y","","","*fy","/fy","x","","x"},
+{"f","x","x","x","x","(e)","x","n"},
+};
+char input[256],e[256];
+int tokennumber=0; //the total number of token
+
+int check (char digit)//input one char of a token at a time into check function
+{
+        if(47<digit&&digit<58)
+                return 1;
+        else if(digit=='.')
+                return 2;
+        else if(digit=='E')
+                return 3;
+        else if(digit=='+')
+                return 4;
+        else if(digit=='-')
+                return 5;
+        else
+                return 0;
+}
+
+void scanner(struct sammy token[])
+{
+        int i,j;
+        //check each token if matching the reguler expression of a digit
+        for(i=0;i<=tokennumber;i++)
+        {
+        	printf("%s\n",token[i].context);
+			int state=0;
+            if((token[i].context[0]!='+')&&(token[i].context[0]!='-')&&(token[i].context[0]!='*')&&(token[i].context[0]!='/')&&(token[i].context[0]!='(')&&(token[i].context[0]!=')'))
+            {                                                                                                                                                               
+                for(j=0;j<strlen(token[i].context);j++)
+                {
+                        state=scannertable[state][check(token[i].context[j])];
+                        if(state==0)
+                                break;
+                }
+                token[i].context[0]='n';//if this token follow the rules,make it 'n';
+                if(state!=1&&state!=3&&state!=6)
+                {
+                    printf("Lexical error.\n");             
+                }
+            }
+        }
+}
+/*void eliminate(char *input)
+{
+	int i,k;
+	for(i=0;i<strlen(input);i++)
+	{
+		if(input[i]==' ')
+		{
+		 for(k=i;k<strlen(input);k++)
+		 {
+			if(k==strlen(input))
+			input[i]=NULL;	 	
+			
+			input[i]=input[i+1];
+		 	
+		 }
+		}
+	}
+}*/
+void divider(char *input)
+{
+        int i,len=0;
+        for(i=0;i<strlen(input);i++)
+        {
+                if(((input[i]=='+'&&input[i-1]!='E')||(input[i]=='-'&&input[i-1]!='E')||input[i]=='('||input[i]==')'||input[i]=='*'||input[i]=='/')&&i==0)
+                {
+                        token[tokennumber].context[0]=input[i];
+                }
+                else if((input[i]=='+'&&input[i-1]!='E')||(input[i]=='-'&&input[i-1]!='E')||input[i]=='('||input[i]==')'||input[i]=='*'||input[i]=='/')
+                {
+                        len=0;
+                        token[tokennumber+1].context[0]=input[i];
+                        tokennumber++;
+                }
+                else if(token[tokennumber].context[0]=='+'||token[tokennumber].context[0]=='-'||token[tokennumber].context[0]=='*'||token[tokennumber].context[0]=='/'||token[tokennumber].context[0]=='('||token[tokennumber].context[0]==')')
+                {
+                        tokennumber++;
+                        token[tokennumber].context[len]=input[i];
+                        len++;
+                }
+                else
+                {
+                    token[tokennumber].context[len]=input[i];
+                    len++;
+                }
+        }
+}
+void parser(struct sammy token[])
+{
+        int terminal,nonterminal;
+        int i=0,k,height=0;
+        char stack[100];
+        stack[0]='e';
+        while(i<=tokennumber) //token[0]----token[tokennumber]
+        {       //Terminal part;
+                if(token[i].context[0]=='+')
+                        terminal=1;
+                else if(token[i].context[0]=='-')
+                        terminal=2;
+                else if(token[i].context[0]=='*')
+                        terminal=3;
+                else if(token[i].context[0]=='/')
+                        terminal=4;
+                else if(token[i].context[0]=='(')
+                        terminal=5;
+                else if(token[i].context[0]==')')
+                        terminal=6;
+                else //token is a number
+                {        
+                        terminal=7;
+                }
+                //Nonterminal part;
+                if(stack[height]=='e')
+                        nonterminal=1;
+                else if(stack[height]=='r')
+                        nonterminal=2;
+                else if(stack[height]=='t')
+                        nonterminal=3;
+                else if(stack[height]=='y')
+                        nonterminal=4;
+                else if(stack[height]=='f')
+                        nonterminal=5;
+                
+                printf("current=%c stack=%s terminal=%d nonterminal=%d next=%s height=%d\n",token[i].context[0],stack,terminal,nonterminal,parsingtable[nonterminal][terminal].context,height);
+                
+                   if(parsingtable[nonterminal][terminal].context[0]=='x')
+                {
+                        printf("syntax error\n");
+                        break;
+                }
+                else
+                {       
+                        if(stack[height]==token[i].context[0])//top of stack=current token,then clear the one on stack ,go to the next one on stack and examine next token;
+                        {
+                             printf("0\n",k);
+                             stack[height]=NULL;
+                             height--;
+                             i++;
+                        }
+                        else if(parsingtable[nonterminal][terminal].context[0]==NULL)//string NULL------the terminal on stack can be clear;
+                        {
+                            printf("1\n",k);
+                            stack[height]=NULL;
+                            //if(height>0)
+                            height--;
+                        }
+                        else if(parsingtable[nonterminal][terminal].context[0]==token[i].context[0])  //the first char=current token; put the rest of string onto stack,and examine the next token
+                        {
+                            printf("2\n",k);
+                           /* stack[height]=NULL;
+                            //if(height>0)
+                            height--;*/
+                            i++;
+                           // if(strlen(parsingtable[nonterminal][terminal].context)!=1){
+                            for(k=strlen(parsingtable[nonterminal][terminal].context)-1;k>=0;k--)
+                            {
+                                stack[height]=parsingtable[nonterminal][terminal].context[k];
+                                height++;           
+                            }
+                            height--;
+                            stack[height]=NULL;
+                            height--;
+                           // }
+                        }
+                        else //put string onto stack;
+                        {
+                            k=strlen(parsingtable[nonterminal][terminal].context)-1;
+                            printf("3\n",k);
+                            while(k>=0)
+                            {
+                                stack[height]=parsingtable[nonterminal][terminal].context[k];
+                                height++;
+                                k--;
+                            }
+                            height--;
+                        }
+                        
+                        //height=strlen(stack);
+                        printf("current=%c stack=%s terminal=%d nonterminal=%d next=%s height=%d\n",token[i].context[0],stack,terminal,nonterminal,parsingtable[nonterminal][terminal].context,height);
+                        if(height<0&&token[i].context[0]!=NULL)
+                        {                        
+                                     printf("Syntax error.\n");                        
+                                     break;                               
+                            
+                        }
+                        if(token[i].context[0]==NULL)
+                        {
+                            for(k=height;k>=0;k--)
+                            {
+                                if(stack[k]!='r'&&stack[k]!='y')
+                                {
+                                     printf("Syntax error.\n");                        
+                                     break;
+                                }
+                            }
+                        }
+                      //  if(token[i].context[0]==NULL)break;
+                      //  if(stack[0]==NULL&&(token[i].context[0]==')'||token[i].context[0]=='n'))break;
+                      //  if((stack[0]==NULL&&token[i].context[0]!=NULL))
+                      //  {
+                      //      printf("Syntax error.\n");                        
+                      //      break;
+                      //  }
+                        /*if(strlen(stack)>0)
+                          height=strlen(stack)-1;*/
+                        //printf("current=%c stack=%s terminal=%d nonterminal=%d next=%s height=%d\n",token[i].context[0],stack,terminal,nonterminal,parsingtable[nonterminal][terminal].context,height);
+                        //break;
+                        //printf("current=%c stack=%s terminal=%d nonterminal=%d next=%s height=%d\n",token[i].context[0],stack,terminal,nonterminal,parsingtable[nonterminal][terminal].context,height);
+                }
+                
+        }
+        //if(stack[0]!=NULL&&token[tokennumber].context[0]!='n')printf("syntax error!\n");
+
+}
+int main(int argc, char *argv[])
+{
+        
+        gets(input);
+        strcpy(e,input);
+        memset(input,0,255);
+        int len=0,i;
+		for(i=0;i<strlen(e);i++)
+		{
+			if(e[i]!=' ')
+			{
+				input[len]=e[i];
+				len++;
+			}
+		}
+        divider(input);
+        scanner(token);
+        /*int i;
+        for(i=0;i<=tokennumber;i++)
+        printf("%c\n",token[i].context[0]);*/
+        parser(token);
+        
+  system("PAUSE");	
+  return 0;
+}
